@@ -1,7 +1,8 @@
 import './App.css';
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
-import { useState, useEffect } from 'react';  // 
+import { createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut} from 'firebase/auth';
+import { useState, useEffect } from 'react';  
 
 
 const firebaseConfig = {
@@ -16,37 +17,94 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 function App() {
-  const [name, setName] = useState();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    async function testFirestore() {
-      const docRef = doc(db, "testCollection", "testDocument");
-      const docSnap = await getDoc(docRef);
-
-      // Update the document
-      await updateDoc(docRef, {
-        age: "9002",
-        name: "Larry",
-      });
-
-      // Read the document
-      if (docSnap.exists()) {
-        setName(docSnap.data().name);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
       } else {
-        console.log("No such document!");
+        setUser(null);
       }
+    });
+  });
+
+
+
+
+  // Sign up function
+  const signUp = () => {
+    createUserWithEmailAndPassword(auth, email, password)
+      .then(userCredential => {
+        setUser(userCredential.user);
+        console.log('User signed up:', userCredential.user);
+      })
+      .catch(error => {
+        console.error('Error signing up:', error);
+      });
+  }
+
+  //sign in function
+  const signIn = () => {
+    signInWithEmailAndPassword(auth, email, password)
+      .then(userCredential => {
+        setUser(userCredential.user);
+        console.log('User signed in:', userCredential.user);
+      })
+      .catch(error => {
+        console.error('Error signing out:', error);
+      });
+  }
+
+  // Log out function
+  const logOut = () => {
+    signOut(auth)
+      .then(() => {
+        setUser(null);
+        console.log('User logged out');
+      })
+      .catch(error => {
+        console.error('Error logging out:', error);
+      });
     }
 
-    testFirestore();
-  }, []);
 
   return (
     <>
-      <p>Firestore Check{name}</p>
+      <p>Firestore Authentication</p>
+
+      <div>
+       
+        {
+          !user && (
+            <>
+            <input type="text" placeholder='Email' value ={email} onChange={(event) => setEmail(event.target.value)} />
+            <input type="password" placeholder='Password' value ={password} onChange={(event)=> setPassword(event.target.value)}/>
+              <button onClick={signUp}>Sign up</button>
+              <button onClick={signIn}>Sign in</button>
+            </>
+          )
+        }
+
+
+        
+      </div>
+
+      {
+        user && (
+          <div>
+            <p>Logged in as: {user.email}</p>
+             <button onClick={logOut}>Log out</button>
+          </div>
+        )
+      }
     </>
-  );
+  )
 }
 
 export default App;
